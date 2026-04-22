@@ -16,8 +16,9 @@ interface CheckoutModalProps {
 export default function CheckoutModal({ gift, onClose, formatCurrency }: CheckoutModalProps) {
   useEffect(() => {
     // A PUBLIC_KEY é segura para ficar no Frontend.
-    // Usando a chave de Produção real providenciada pelo usuário.
-    initMercadoPago('APP_USR-00d448c2-3aeb-40b9-9c4f-0026758320ac', { locale: 'pt-BR' });
+    // Puxando da variável de ambiente VITE_PUBLIC_KEY (com fallback para desenvolvimento local)
+    const publicKey = import.meta.env.VITE_PUBLIC_KEY || 'APP_USR-00d448c2-3aeb-40b9-9c4f-0026758320ac';
+    initMercadoPago(publicKey, { locale: 'pt-BR' });
   }, []);
 
   const initialization = {
