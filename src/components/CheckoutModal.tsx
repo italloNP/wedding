@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { X, Lock, ShieldCheck } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Lock, ShieldCheck, Copy } from 'lucide-react';
 import { initMercadoPago, Payment } from '@mercadopago/sdk-react';
 
 interface CheckoutModalProps {
@@ -14,10 +14,12 @@ interface CheckoutModalProps {
 }
 
 export default function CheckoutModal({ gift, onClose, formatCurrency }: CheckoutModalProps) {
+  const [pixData, setPixData] = useState<any>(null);
+
   useEffect(() => {
     // A PUBLIC_KEY é segura para ficar no Frontend.
-    // Puxando da variável de ambiente VITE_PUBLIC_KEY (com fallback para desenvolvimento local)
-    const publicKey = import.meta.env.VITE_PUBLIC_KEY || 'APP_USR-00d448c2-3aeb-40b9-9c4f-0026758320ac';
+    // Puxando da variável de ambiente VITE_PUBLIC_KEY ou da Public_key da Vercel
+    const publicKey = import.meta.env.Public_key || import.meta.env.VITE_PUBLIC_KEY || 'APP_USR-00d448c2-3aeb-40b9-9c4f-0026758320ac';
     initMercadoPago(publicKey, { locale: 'pt-BR' });
   }, []);
 
@@ -32,12 +34,33 @@ export default function CheckoutModal({ gift, onClose, formatCurrency }: Checkou
     },
   };
 
-  const onSubmit = async (formData: any) => {
-    // Callback executado quando o pagamento é enviado.
-    return new Promise((resolve) => {
+  const onSubmit = async ({ formData, selectedPaymentMethod }: any) => {
+    return new Promise((resolve, reject) => {
       console.log('Dados do Pagamento:', formData);
-      // Aqui você enviará o pagamento para o banco de dados/backend futuramente.
-      resolve('ok');
+      
+      fetch('/api/process_payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ formData, giftTitle: gift.title }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === 'pending' || data.status === 'approved') {
+            if (formData.payment_method_id === 'pix' && data.point_of_interaction) {
+              setPixData(data.point_of_interaction.transaction_data);
+            }
+            resolve('ok');
+          } else {
+            console.error('Erro no pagamento:', data);
+            reject();
+          }
+        })
+        .catch((error) => {
+          console.error('Erro na requisição:', error);
+          reject();
+        });
     });
   };
 
@@ -90,11 +113,54 @@ export default function CheckoutModal({ gift, onClose, formatCurrency }: Checkou
 
           {/* Integração Real do Mercado Pago Brick */}
           <div className="flex-1 w-full min-h-[400px] bg-white rounded-lg relative overflow-y-auto pr-2">
-            <Payment
-              initialization={initialization}
-              customization={customization}
-              onSubmit={onSubmit}
-            />
+            {!pixData ? (
+              <Payment
+                initialization={initialization}
+                customization={customization}
+                onSubmit={onSubmit}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-6 py-8 animate-in fade-in">
+                <div className="text-center space-y-2">
+                  <h3 className="text-2xl font-serif text-text">Pague com Pix</h3>
+                  <p className="text-sm text-muted">
+                    Escaneie o QR Code ou copie o código para finalizar seu presente.
+                  </p>
+                </div>
+                
+                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+                  <img 
+                    src={`data:image/jpeg;base64,${pixData.qr_code_base64}`} 
+                    alt="QR Code Pix" 
+                    className="w-48 h-48"
+                  />
+                </div>
+
+                <div className="w-full max-w-sm space-y-2">
+                  <p className="text-xs font-medium text-muted uppercase tracking-wider text-center">
+                    Código Copia e Cola
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={pixData.qr_code} 
+                      className="flex-1 p-3 text-sm bg-zinc-50 border border-zinc-200 rounded-lg text-zinc-600 outline-none truncate"
+                    />
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(pixData.qr_code);
+                        alert('Código Pix copiado!');
+                      }}
+                      className="p-3 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center justify-center shrink-0"
+                      title="Copiar código"
+                    >
+                      <Copy size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
