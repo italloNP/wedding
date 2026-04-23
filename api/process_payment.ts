@@ -10,7 +10,11 @@ export default async function handler(req: any, res: any) {
   const { formData, giftTitle } = body;
 
   try {
-    const accessToken = process.env.Access_Token || process.env.ACCESS_TOKEN || process.env.VITE_ACCESS_TOKEN || 'APP_USR-7013854181977717-092923-a159f81ca97aee2a02b4e8d26fdfc972-2012023199';
+    let accessToken = process.env.Access_Token || process.env.ACCESS_TOKEN || process.env.VITE_ACCESS_TOKEN;
+    if (typeof accessToken === 'string') accessToken = accessToken.trim();
+    if (!accessToken || accessToken === 'undefined' || accessToken === 'null') {
+      accessToken = 'APP_USR-7013854181977717-092923-a159f81ca97aee2a02b4e8d26fdfc972-2012023199';
+    }
 
     const response = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
