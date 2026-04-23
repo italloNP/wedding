@@ -34,7 +34,7 @@ export default function CheckoutModal({ gift, onClose, formatCurrency }: Checkou
     },
   };
 
-  const onSubmit = async ({ formData, selectedPaymentMethod }: any) => {
+  const onSubmit = async ({ formData }: any) => {
     return new Promise((resolve, reject) => {
       console.log('Dados do Pagamento:', formData);
       
